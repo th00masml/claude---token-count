@@ -1,0 +1,17 @@
+# On-demand prices in USD per 1M tokens, Bedrock us-east-1.
+# verified: false = taken from memory of the public pricing page, must be checked on
+# https://aws.amazon.com/bedrock/pricing/ before the stage-2 cost estimate.
+# null = unknown; costs for such models are reported as missing, never guessed.
+# Local vLLM models have no token price (GPU time is reported instead).
+as_of: null
+currency: USD
+per_million_tokens:
+  nova-micro:      {input: 0.035, output: 0.14,  verified: false}
+  nova-lite:       {input: 0.06,  output: 0.24,  verified: false}
+  llama-3.1-8b:    {input: 0.22,  output: 0.22,  verified: false}
+  mistral-small:   {input: 1.00,  output: 3.00,  verified: false}
+  ministral-3-8b:  {input: null,  output: null,  verified: false}
+  ministral-3-14b: {input: null,  output: null,  verified: false}
+  magistral-small: {input: null,  output: null,  verified: false}
+  reference-large: {input: 3.00,  output: 15.00, verified: false}
+budget_usd: 50.0   # hard stop for all Bedrock calls in the benchmark

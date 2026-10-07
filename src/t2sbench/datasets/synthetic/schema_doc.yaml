@@ -1,0 +1,139 @@
+# Human description of the synthetic legacy production database.
+# Code meanings live in codes.yaml; here we describe tables, columns and conventions.
+database: synthetic shop-floor production system (SQLite), data period 2026-01-01 .. 2026-03-31
+conventions:
+  - Dates are TEXT 'YYYY-MM-DD'; timestamps are TEXT 'YYYY-MM-DD HH:MM'.
+  - Production and downtime belong to the shift date ZMIANA.ZM_DATA. The night shift (ZM_KOD '3') of date D runs from D 22:00 to D+1 06:00.
+  - Good output is PROD_REJ.ILOSC_OK. Scrap is PROD_REJ.ILOSC_BR (sum of BRAKI.ILOSC for that record excluding rejected scrap reports, BR_STAT 'O').
+  - Scrap rate (percent) = 100 * SUM(ILOSC_BR) / (SUM(ILOSC_OK) + SUM(ILOSC_BR)).
+  - A breakdown / failure is a downtime whose reason has PRZYCZ.KAT = 'T'.
+tables:
+  LIN:
+    description: production lines
+    columns:
+      LIN_ID: line id (PK)
+      LIN_KOD: line code, e.g. 'L03'
+      LIN_NAZ: line name
+      WYDZ: department code (see codes.yaml LIN.WYDZ)
+      LIN_STAT: line status code
+  MCH:
+    description: machines and workstations, each belongs to one line
+    columns:
+      MCH_ID: machine id (PK)
+      MCH_KOD: machine code, e.g. 'W0302' (type letter + line number + position)
+      MCH_NAZ: machine name
+      LIN_ID: line (FK LIN)
+      MCH_TYP: machine type code
+      MCH_AKT: in service flag code
+      ROK_PROD: year of manufacture
+  MCH_STAT:
+    description: machine status change log; each row says the machine switched to STAT at TS
+    columns:
+      MS_ID: id (PK)
+      MCH_ID: machine (FK MCH)
+      TS: timestamp of the status change
+      STAT: new machine status code
+  ZMIANA:
+    description: shifts, three per day
+    columns:
+      ZM_ID: shift id (PK)
+      ZM_DATA: shift date
+      ZM_KOD: shift code (1 morning, 2 afternoon, 3 night)
+      BRYG: crew code working the shift
+      TS_OD: shift start timestamp
+      TS_DO: shift end timestamp
+  PRZYCZ:
+    description: dictionary of downtime reasons
+    columns:
+      PRZYCZ_KOD: reason code (PK)
+      OPIS: reason description (Polish, upper case, no diacritics)
+      KAT: reason category code
+  PRZEST:
+    description: machine downtimes
+    columns:
+      PRZ_ID: downtime id (PK)
+      MCH_ID: machine (FK MCH)
+      ZM_ID: shift during which the downtime started (FK ZMIANA)
+      TS_OD: downtime start
+      TS_DO: downtime end
+      CZAS_MIN: duration in minutes
+      PRZYCZ_KOD: reason (FK PRZYCZ)
+      PLAN_FL: planned downtime flag code
+      UWAGI: free-text remark, often NULL
+  PROD:
+    description: products (finished parts and assemblies)
+    columns:
+      PROD_ID: product id (PK)
+      INDEKS: product index (catalogue number), e.g. 'B47-0013'
+      NAZWA: product name
+      JM: unit of measure code
+      GRUPA: product group code
+      PROD_STAT: product status code
+      MASA_KG: unit mass in kg
+  ZLEC:
+    description: production orders
+    columns:
+      ZLEC_ID: order id (PK)
+      ZLEC_NR: order number, e.g. 'ZP/2026/00042'
+      PROD_ID: product (FK PROD)
+      ZLEC_ILOSC: ordered quantity
+      ZLEC_STAT: order status code
+      PRIOR: priority code
+      DT_UTW: creation date
+      DT_PLAN_OD: planned start date
+      DT_PLAN_DO: planned end date
+  ZLEC_POZ:
+    description: order positions = routing operations of an order, each assigned to a line
+    columns:
+      POZ_ID: position id (PK)
+      ZLEC_ID: order (FK ZLEC)
+      POZ_NR: operation sequence number within the order
+      OPER_KOD: operation code
+      LIN_ID: line performing the operation (FK LIN)
+      POZ_ILOSC: quantity for the operation
+      POZ_STAT: position status code
+  OPER:
+    description: machine operators (employees)
+    columns:
+      OPER_ID: operator id (PK)
+      NR_EWID: employee number
+      IMIE: first name
+      NAZW: last name
+      KWAL: qualification level code
+      OPER_STAT: employment status code
+      LIN_ID: home line (FK LIN)
+      DT_ZATR: hire date
+  OPER_ZM:
+    description: which operator worked on which machine in which shift
+    columns:
+      OZ_ID: id (PK)
+      OPER_ID: operator (FK OPER)
+      ZM_ID: shift (FK ZMIANA)
+      MCH_ID: machine (FK MCH)
+  PROD_REJ:
+    description: production reports, one per machine and shift when the machine produced
+    columns:
+      REJ_ID: report id (PK)
+      ZM_ID: shift (FK ZMIANA)
+      MCH_ID: machine (FK MCH)
+      ZLEC_ID: order (FK ZLEC)
+      POZ_ID: order position (FK ZLEC_POZ)
+      OPER_ID: reporting operator (FK OPER)
+      ILOSC_OK: good quantity
+      ILOSC_BR: scrap quantity (excludes rejected scrap reports)
+      TS_REJ: report timestamp
+  BR_TYP:
+    description: dictionary of scrap (defect) types
+    columns:
+      BR_TYP_KOD: scrap type code (PK)
+      OPIS: description (Polish, upper case, no diacritics)
+      KAT: defect category code
+  BRAKI:
+    description: scrap reports linked to a production report
+    columns:
+      BR_ID: scrap report id (PK)
+      REJ_ID: production report (FK PROD_REJ)
+      BR_TYP_KOD: scrap type (FK BR_TYP)
+      ILOSC: scrapped quantity
+      BR_STAT: scrap report status code
+      TS_ZGL: report timestamp

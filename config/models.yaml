@@ -1,0 +1,93 @@
+# Candidate models. Nothing here is assumed to exist: `t2sbench discover-models` checks each
+# entry (Bedrock: list_foundation_models in `bedrock.region`; vLLM: the HF repo) and writes
+# results/model_availability.json. Unavailable models are skipped with a log entry.
+#
+# role: candidate (S0-S5) | reference (large Bedrock model, S2 only) | sqrl (stage 5 only)
+
+bedrock:
+  region: us-east-1        # widest choice of small models; change here if needed
+  max_concurrency: 4
+
+vllm:
+  base_url: http://127.0.0.1:8000/v1
+  health_url: http://127.0.0.1:8000/health
+  gpu: RTX 4090 24GB
+  concurrency: 4           # drop to 2 on preemption / KV-cache OOM (logged)
+
+models:
+  # ---------------- Bedrock, small (<= 24B) ----------------
+  - {name: nova-micro,      backend: bedrock, match: 'amazon\.nova-micro',            size_b: null, role: candidate}
+  - {name: nova-lite,       backend: bedrock, match: 'amazon\.nova-lite',             size_b: null, role: candidate}
+  - {name: ministral-3-8b,  backend: bedrock, match: 'ministral-3-8b',               size_b: 8,    role: candidate}
+  - {name: ministral-3-14b, backend: bedrock, match: 'ministral-3-14b',              size_b: 14,   role: candidate}
+  - {name: mistral-small,   backend: bedrock, match: 'mistral\.mistral-small',        size_b: 24,   role: candidate}
+  - {name: magistral-small, backend: bedrock, match: 'magistral-small',              size_b: 24,   role: candidate}
+  - {name: llama-3.1-8b,    backend: bedrock, match: 'meta\.llama3-1-8b-instruct',    size_b: 8,    role: candidate}
+  # ---------------- Bedrock, large reference (S2 only) ----------------
+  - {name: reference-large, backend: bedrock, match: 'anthropic\.claude-sonnet-4',    size_b: null, role: reference, strategies: [S2]}
+
+  # ---------------- Open models via vLLM (one at a time on the 4090) ----------------
+  # precision rule: 4-9B bf16 (+ fp8 KV cache); 14B FP8 or ready AWQ 4-bit checkpoint;
+  # 22-24B only with a ready AWQ/GPTQ checkpoint, otherwise skipped (never quantized by us).
+  - name: qwen2.5-coder-7b
+    backend: vllm
+    hf_repo: Qwen/Qwen2.5-Coder-7B-Instruct
+    size_b: 7
+    dtype: bfloat16
+    kv_cache_dtype: fp8
+    gpu_memory_utilization: 0.92
+    max_model_len: 8192
+    role: candidate
+  - name: qwen2.5-coder-14b
+    backend: vllm
+    hf_repo: Qwen/Qwen2.5-Coder-14B-Instruct
+    checkpoint: Qwen/Qwen2.5-Coder-14B-Instruct-AWQ   # official AWQ 4-bit
+    quantization: awq
+    size_b: 14
+    max_model_len: 8192
+    gpu_memory_utilization: 0.92
+    role: candidate
+  - name: omnisql-7b
+    backend: vllm
+    hf_repo: seeklhy/OmniSQL-7B
+    size_b: 7
+    dtype: bfloat16
+    kv_cache_dtype: fp8
+    gpu_memory_utilization: 0.92
+    max_model_len: 8192
+    prompt_template: omnisql   # official prompt from the model card, copied verbatim in stage 2
+    role: candidate
+  - name: omnisql-14b
+    backend: vllm
+    hf_repo: seeklhy/OmniSQL-14B
+    checkpoint: null          # no ready AWQ found yet -> online FP8 (see quantization)
+    quantization: fp8
+    size_b: 14
+    max_model_len: 8192
+    gpu_memory_utilization: 0.92
+    prompt_template: omnisql
+    role: candidate
+  - name: arctic-text2sql-r1-7b
+    backend: vllm
+    hf_repo: Snowflake/Arctic-Text2SQL-R1-7B
+    size_b: 7
+    dtype: bfloat16
+    kv_cache_dtype: fp8
+    gpu_memory_utilization: 0.92
+    max_model_len: 8192
+    prompt_template: arctic
+    role: candidate
+  - name: arctic-text2sql-r1-14b
+    backend: vllm
+    hf_repo: Snowflake/Arctic-Text2SQL-R1-14B
+    checkpoint: null
+    quantization: fp8
+    size_b: 14
+    max_model_len: 8192
+    gpu_memory_utilization: 0.92
+    prompt_template: arctic
+    role: candidate
+
+  # ---------------- SQRL: stage 5 only, native protocol, bf16, never quantized -------------
+  - {name: sqrl-4b, backend: vllm, hf_repo: feyninc/sqrl-4b, size_b: 4, dtype: bfloat16, max_model_len: 16384, role: sqrl}
+  - {name: sqrl-9b, backend: vllm, hf_repo: feyninc/sqrl-9b, size_b: 9, dtype: bfloat16, max_model_len: 16384, role: sqrl}

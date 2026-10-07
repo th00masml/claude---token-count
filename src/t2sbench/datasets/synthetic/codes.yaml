@@ -1,0 +1,140 @@
+# Meaning of single-letter / short status codes in the synthetic legacy production DB.
+# This file is the source of truth: the generator draws code values from here and a test
+# checks that every distinct code value in the database is listed below.
+# Format: TABLE.COLUMN -> code -> {en, pl}
+
+ZLEC.ZLEC_STAT:
+  N: {en: new / not started, pl: nowe / nierozpoczęte}
+  R: {en: in progress, pl: w realizacji}
+  W: {en: on hold, pl: wstrzymane}
+  Z: {en: completed / closed, pl: zakończone / zamknięte}
+  A: {en: cancelled, pl: anulowane}
+
+ZLEC.PRIOR:
+  "1": {en: high priority, pl: wysoki priorytet}
+  "2": {en: normal priority, pl: normalny priorytet}
+  "3": {en: low priority, pl: niski priorytet}
+
+ZLEC_POZ.POZ_STAT:
+  O: {en: open, pl: otwarta}
+  R: {en: in progress, pl: w realizacji}
+  Z: {en: done, pl: wykonana}
+
+ZLEC_POZ.OPER_KOD:
+  CI: {en: cutting, pl: cięcie}
+  TL: {en: pressing / stamping, pl: tłoczenie}
+  SP: {en: welding, pl: spawanie}
+  LK: {en: painting, pl: lakierowanie}
+  MT: {en: assembly, pl: montaż}
+  KJ: {en: quality inspection, pl: kontrola jakości}
+
+LIN.WYDZ:
+  M: {en: machining department, pl: wydział obróbki}
+  S: {en: welding department, pl: wydział spawalni}
+  P: {en: paint shop, pl: lakiernia}
+  A: {en: assembly department, pl: wydział montażu}
+
+LIN.LIN_STAT:
+  A: {en: active, pl: aktywna}
+  N: {en: inactive, pl: nieaktywna}
+
+MCH.MCH_TYP:
+  C: {en: cutting machine / laser, pl: maszyna do cięcia / laser}
+  P: {en: press, pl: prasa}
+  W: {en: welding robot, pl: robot spawalniczy}
+  L: {en: paint booth, pl: kabina lakiernicza}
+  M: {en: assembly station, pl: stanowisko montażowe}
+  K: {en: inspection station, pl: stanowisko kontroli}
+
+MCH.MCH_AKT:
+  T: {en: in service, pl: w eksploatacji}
+  N: {en: decommissioned, pl: wycofana}
+
+MCH_STAT.STAT:
+  P: {en: running, pl: praca}
+  S: {en: idle / stopped, pl: postój}
+  A: {en: breakdown, pl: awaria}
+  X: {en: changeover, pl: przezbrajanie}
+  K: {en: maintenance, pl: konserwacja}
+
+ZMIANA.ZM_KOD:
+  "1": {en: morning shift (06:00-14:00), pl: zmiana poranna / pierwsza (06:00-14:00)}
+  "2": {en: afternoon shift (14:00-22:00), pl: zmiana popołudniowa / druga (14:00-22:00)}
+  "3": {en: night shift (22:00-06:00 next day), pl: zmiana nocna / trzecia (22:00-06:00)}
+
+ZMIANA.BRYG:
+  A: {en: crew A, pl: brygada A}
+  B: {en: crew B, pl: brygada B}
+  C: {en: crew C, pl: brygada C}
+  D: {en: crew D, pl: brygada D}
+
+PRZEST.PLAN_FL:
+  T: {en: planned downtime, pl: przestój planowany}
+  N: {en: unplanned downtime, pl: przestój nieplanowany}
+
+PRZYCZ.KAT:
+  T: {en: technical (failure), pl: techniczna (awaria)}
+  O: {en: organisational, pl: organizacyjna}
+  J: {en: quality-related, pl: jakościowa}
+  P: {en: planned, pl: planowa}
+
+PRZYCZ.PRZYCZ_KOD:
+  AWM: {en: mechanical failure, pl: awaria mechaniczna}
+  AWE: {en: electrical failure, pl: awaria elektryczna}
+  AWH: {en: hydraulic failure, pl: awaria hydrauliczna}
+  AWS: {en: control system failure, pl: awaria sterowania}
+  BMT: {en: no material, pl: brak materiału}
+  BOP: {en: no operator, pl: brak operatora}
+  OCZ: {en: waiting for order / instructions, pl: oczekiwanie na zlecenie}
+  JKP: {en: quality hold, pl: blokada jakościowa}
+  PRZ: {en: changeover, pl: przezbrojenie}
+  KON: {en: scheduled maintenance, pl: konserwacja planowa}
+  PRZW: {en: break, pl: przerwa}
+
+PROD.JM:
+  SZT: {en: pieces, pl: sztuki}
+  KG: {en: kilograms, pl: kilogramy}
+  KPL: {en: sets, pl: komplety}
+
+PROD.GRUPA:
+  A: {en: brackets and mounts, pl: wsporniki i mocowania}
+  B: {en: frames, pl: ramy}
+  C: {en: housings and covers, pl: obudowy i osłony}
+  D: {en: assemblies, pl: zespoły}
+
+PROD.PROD_STAT:
+  A: {en: active, pl: aktywny}
+  W: {en: phased out, pl: wycofany}
+
+OPER.KWAL:
+  "1": {en: trainee, pl: przyuczony}
+  "2": {en: qualified, pl: wykwalifikowany}
+  "3": {en: senior / setter, pl: starszy / ustawiacz}
+
+OPER.OPER_STAT:
+  A: {en: active, pl: aktywny}
+  U: {en: on leave, pl: na urlopie}
+  Z: {en: left the company, pl: zwolniony}
+
+BRAKI.BR_STAT:
+  Z: {en: reported, pl: zgłoszony}
+  P: {en: confirmed, pl: potwierdzony}
+  O: {en: rejected (not scrap), pl: odrzucony (nie jest brakiem)}
+
+BR_TYP.KAT:
+  M: {en: material defect, pl: wada materiałowa}
+  P: {en: process defect, pl: wada procesowa}
+  W: {en: dimensional defect, pl: wada wymiarowa}
+  L: {en: surface / paint defect, pl: wada powierzchni / powłoki}
+
+BR_TYP.BR_TYP_KOD:
+  MPK: {en: material crack, pl: pęknięcie materiału}
+  MWT: {en: material inclusion, pl: wtrącenie w materiale}
+  PSP: {en: bad weld, pl: wadliwa spoina}
+  PGI: {en: bent part, pl: wygięcie detalu}
+  PNZ: {en: missing component, pl: brak elementu}
+  WWY: {en: out of tolerance, pl: wymiar poza tolerancją}
+  WOT: {en: hole misplaced, pl: przesunięty otwór}
+  LZC: {en: paint run, pl: zaciek lakieru}
+  LRY: {en: scratch, pl: rysa}
+  LKO: {en: corrosion, pl: korozja}

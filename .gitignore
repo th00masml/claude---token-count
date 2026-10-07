@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ipynb_checkpoints/
+# Downloaded public data (BIRD) and generated databases are rebuilt by commands, not committed
+data/bird/
+data/synthetic/*.sqlite
+# Model call cache and raw results
+cache/
+results/*.parquet
+logs/
+adapters/
