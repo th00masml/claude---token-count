@@ -185,6 +185,17 @@ def run_config(cfg: RunConfig, model: Model, model_spec: dict, results_dir: Path
     fatal: list[BaseException] = []
 
     def one(q: Question) -> dict | None:
+        """Never raises: anything unexpected (schema build, scoring, ...) is a transient failure."""
+        try:
+            return _one(q)
+        except (BudgetExceeded, UnpricedModel) as e:
+            fatal.append(e)
+        except Exception as e:
+            log.exception("question %s failed", q.id)
+            failures.append(f"{q.id}: {e}")
+        return None
+
+    def _one(q: Question) -> dict | None:
         if fatal:
             return None
         ctx = ctx_factory(q)
@@ -243,25 +254,27 @@ def run_config(cfg: RunConfig, model: Model, model_spec: dict, results_dir: Path
     pending = list(todo)
     running = set()
     flushed = 0
-    with ThreadPoolExecutor(max_workers=cfg.concurrency) as pool:
-        while (pending or running) and not fatal:
-            limit = guard.poll(cfg.key)
-            while pending and len(running) < limit:
-                running.add(pool.submit(one, pending.pop(0)))
-            finished, running = wait(running, return_when=FIRST_COMPLETED)
-            for f in finished:
+    try:
+        with ThreadPoolExecutor(max_workers=cfg.concurrency) as pool:
+            while (pending or running) and not fatal:
+                limit = guard.poll(cfg.key)
+                while pending and len(running) < limit:
+                    running.add(pool.submit(one, pending.pop(0)))
+                finished, running = wait(running, return_when=FIRST_COMPLETED)
+                for f in finished:
+                    r = f.result()
+                    if r is not None:
+                        rows.append(r)
+                if len(rows) - flushed >= 10:
+                    flush()
+                    flushed = len(rows)
+            wait(running)
+            for f in running:
                 r = f.result()
                 if r is not None:
                     rows.append(r)
-            if len(rows) - flushed >= 10:
-                flush()
-                flushed = len(rows)
-        wait(running)
-        for f in running:
-            r = f.result()
-            if r is not None:
-                rows.append(r)
-    df = flush()
+    finally:
+        df = flush()  # whatever finished is kept, even on KeyboardInterrupt
     if fatal:
         raise fatal[0]
     if failures:

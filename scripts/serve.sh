@@ -28,7 +28,13 @@ echo "[serve] $(date -Is) starting ${VLLM_BIN:-vllm} ${ARGS[*]}" | tee -a logs/s
 "${VLLM_BIN:-vllm}" "${ARGS[@]}" >"$LOG" 2>&1 &
 PID=$!
 
-gpu_used_mb() { nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits 2>/dev/null | head -1 || echo 0; }
+gpu_used_mb() {
+  # nvidia-smi prints errors ("No devices were found") on stdout; anything non-numeric -> 0,
+  # otherwise [[ -lt ]] under set -u would abort the trap and turn exit codes 3/4 into 1
+  local v
+  v="$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits 2>/dev/null | head -1 || true)"
+  [[ "$v" =~ ^[0-9]+$ ]] && echo "$v" || echo 0
+}
 
 cleanup() {
   if kill -0 "$PID" 2>/dev/null; then

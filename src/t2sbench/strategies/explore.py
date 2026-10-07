@@ -50,7 +50,8 @@ class S3(S2):
 
     def run(self, model: Model, q: Question, ctx: Context) -> StrategyOutput:
         system, msgs = self.build(q, ctx, ctx.schema_s2, ctx.fewshot)
-        system = (system or "") + EXPLORE_SYSTEM_SUFFIX.format(n=self.max_tool_calls)
+        if model.native_tools:  # text mode gets its own <explore> instructions from the model loop
+            system = (system or "") + EXPLORE_SYSTEM_SUFFIX.format(n=self.max_tool_calls)
         db_timer = Timer()
         queries: list[str] = []
 

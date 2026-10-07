@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import threading
 from dataclasses import asdict, is_dataclass
 from pathlib import Path
 from typing import Any
@@ -49,7 +50,7 @@ class DiskCache:
     def put(self, key: str, value: dict) -> None:
         p = self._path(key)
         p.parent.mkdir(parents=True, exist_ok=True)
-        tmp = p.with_suffix(f".{os.getpid()}.tmp")
+        tmp = p.with_suffix(f".{os.getpid()}.{threading.get_ident()}.tmp")
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump(value, f, ensure_ascii=False)
         os.replace(tmp, p)  # atomic: a crash never leaves a half-written entry

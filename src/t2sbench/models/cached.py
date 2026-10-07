@@ -34,11 +34,16 @@ class CachedModel(Model):
             g = Generation(**hit)
             g.cached = True
             return g
-        if self.budget is not None:
-            self.budget.check(self.name, estimate_tokens(messages, system), p.max_tokens)
-        g = self.inner.chat(messages, system, p, tools)
-        if self.budget is not None:
-            self.budget.record(self.name, g.input_tokens, g.output_tokens)
+        if self.budget is None:
+            g = self.inner.chat(messages, system, p, tools)
+        else:
+            held = self.budget.check(self.name, estimate_tokens(messages, system), p.max_tokens)
+            try:
+                g = self.inner.chat(messages, system, p, tools)
+            except BaseException:
+                self.budget.release(held)
+                raise
+            self.budget.record(self.name, g.input_tokens, g.output_tokens, reserved=held)
         self.cache.put(key, g.to_dict())
         return g
 

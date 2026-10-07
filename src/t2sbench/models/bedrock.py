@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
+import re
 import time
 
 from t2sbench.models.base import GenParams, Generation, Message, Model, ModelError, ToolSpec
+
+
+_CONTEXT_ERR = re.compile(r"too long|too many (input )?tokens|context (length|window)|max(imum)? tokens|input length",
+                          re.IGNORECASE)
 
 
 class BedrockModel(Model):
@@ -36,7 +41,7 @@ class BedrockModel(Model):
                                           "content": [{"text": m.content or "(empty)"}]}}]
             elif m.role == "assistant":
                 role = "assistant"
-                blocks = [{"text": m.content}] if m.content else []
+                blocks = [{"text": m.content}] if m.content and m.content.strip() else []
                 for tc in m.tool_calls or []:
                     blocks.append({"toolUse": {"toolUseId": tc["id"], "name": tc["name"],
                                                "input": tc.get("arguments") or {}}})
@@ -44,7 +49,7 @@ class BedrockModel(Model):
                     blocks = [{"text": "(no text)"}]
             else:
                 role = "user"
-                blocks = [{"text": m.content}]
+                blocks = [{"text": m.content if m.content and m.content.strip() else "(empty)"}]
             # Converse requires alternating roles: merge consecutive messages of one role
             if out and out[-1]["role"] == role:
                 out[-1]["content"].extend(blocks)
@@ -74,7 +79,10 @@ class BedrockModel(Model):
             resp = self.client.converse(**req)
         except Exception as e:  # botocore ClientError: ValidationException etc.
             code = getattr(e, "response", {}).get("Error", {}).get("Code", "")
-            if code in ("ValidationException", "ModelErrorException"):
+            # Only a too-long prompt is a property of the question (-> recorded as no answer).
+            # Any other ValidationException means our request is malformed: re-raise so the
+            # runner does not record it and counts it towards its failure-rate stop.
+            if code == "ValidationException" and _CONTEXT_ERR.search(str(e)):
                 raise ModelError(f"{code}: {e}") from e
             raise
         latency = time.perf_counter() - t0

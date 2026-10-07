@@ -126,7 +126,8 @@ class Model(ABC):
                 else:
                     obs = "Query limit reached. Give the final SQL query now."
                 transcript.append(Message("tool", obs, tool_call_id=tc["id"]))
-        total.text = g.text if finished else ""
+        # keep the last text even if that turn also asked for a tool: it may hold the final SQL
+        total.text = g.text
         total.stop_reason = g.stop_reason
         if finished:
             transcript.append(Message("assistant", g.text))

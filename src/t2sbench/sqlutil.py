@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import re
 
-_FENCE = re.compile(r"```(?:sql|sqlite)?\s*\n?(.*?)```", re.IGNORECASE | re.DOTALL)
+_FENCE = re.compile(r"```[ \t]*(?:(?:sqlite|sql)\b)?[ \t]*\n?(.*?)```", re.IGNORECASE | re.DOTALL)
 _ANSWER = re.compile(r"<answer>(.*?)</answer>", re.IGNORECASE | re.DOTALL)
-_BARE = re.compile(r"\b(WITH|SELECT)\b.*", re.IGNORECASE | re.DOTALL)
+_BARE = re.compile(r"\b((?:WITH|SELECT)\b.*)", re.IGNORECASE | re.DOTALL)
 
 
 def strip_think(text: str) -> str:
@@ -31,9 +31,12 @@ def extract_sql(text: str | None) -> str | None:
         return _clean(blocks[-1] if blocks else inner)
     m = _BARE.search(body)
     if m:
-        sql = m.group(0)
-        sql = re.split(r"\n\s*\n", sql, maxsplit=1)[0]  # stop at the first blank line
-        return _clean(sql)
+        sql = re.split(r"\n\s*\n", m.group(1), maxsplit=1)[0]  # stop at the first blank line
+        sql = _clean(sql)
+        # a bare match must at least parse as SQL; otherwise it is prose ("select the right table")
+        from t2sbench.validator import validate_sql
+
+        return sql if sql and validate_sql(sql).ok else None
     return None
 
 

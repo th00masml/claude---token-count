@@ -45,12 +45,27 @@ def test_bedrock_chat_parses_text_tools_and_usage():
     assert req["system"] == [{"text": "sys"}] and "toolConfig" in req and "topP" not in req["inferenceConfig"]
 
 
-def test_bedrock_validation_error_is_model_error():
-    err = Exception("bad")
-    err.response = {"Error": {"Code": "ValidationException"}}
-    m = BedrockModel("cheap", "amazon.x", "us-east-1", client=FakeBedrockClient([err]))
+def test_bedrock_context_error_is_model_error_other_validation_errors_reraise():
+    too_long = Exception("Input is too long for requested model.")
+    too_long.response = {"Error": {"Code": "ValidationException"}}
+    m = BedrockModel("cheap", "amazon.x", "us-east-1", client=FakeBedrockClient([too_long]))
     with pytest.raises(ModelError):
         m.chat([Message("user", "hi")])
+    malformed = Exception("text field in the ContentBlock object is blank")
+    malformed.response = {"Error": {"Code": "ValidationException"}}
+    m = BedrockModel("cheap", "amazon.x", "us-east-1", client=FakeBedrockClient([malformed]))
+    with pytest.raises(Exception) as ei:
+        m.chat([Message("user", "hi")])
+    assert not isinstance(ei.value, ModelError)
+
+
+def test_bedrock_never_sends_blank_text_blocks():
+    msgs = [Message("user", "q"), Message("assistant", "\n\n", tool_calls=[{"id": "a", "name": "run_sql",
+                                                                         "arguments": {}}]),
+            Message("tool", "rows", tool_call_id="a"), Message("assistant", "  "), Message("user", "")]
+    for turn in BedrockModel._convert(msgs):
+        for block in turn["content"]:
+            assert "text" not in block or block["text"].strip()
 
 
 def test_openai_compat_uses_adapter_name_and_parses_tools():

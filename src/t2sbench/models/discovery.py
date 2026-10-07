@@ -64,7 +64,11 @@ def discover_bedrock(cfg: dict) -> list[Availability]:
                                     f"no foundation model matching /{m['match']}/ in {region}"))
             log.warning("skip %s: not listed in %s", m["name"], region)
             continue
-        hit = sorted(hits, key=lambda s: s["modelId"])[-1]
+        # list_foundation_models also returns provisioned-only context variants such as
+        # "amazon.nova-lite-v1:0:300k"; prefer base ids (at most one ':') that are on-demand
+        base = [s for s in hits if s["modelId"].count(":") <= 1] or hits
+        on_demand = [s for s in base if "ON_DEMAND" in s.get("inferenceTypesSupported", [])]
+        hit = sorted(on_demand or base, key=lambda s: s["modelId"])[-1]
         types = hit.get("inferenceTypesSupported", [])
         if "ON_DEMAND" in types:
             resolved, reason = hit["modelId"], "on-demand"

@@ -17,6 +17,9 @@ from t2sbench.strategies.explore import run_limited
     ("<answer>SELECT a FROM t</answer>", "SELECT a FROM t"),
     ("The query is: SELECT a FROM t WHERE b = 1;\n\nThis returns a.", "SELECT a FROM t WHERE b = 1"),
     ("```\nWITH x AS (SELECT 1) SELECT * FROM x\n```", "WITH x AS (SELECT 1) SELECT * FROM x"),
+    ("```sqlite\nSELECT 1\n```", "SELECT 1"),
+    ("```SQL\nSELECT 2\n```", "SELECT 2"),
+    ("First we need to select the right table.", None),
     ("I cannot answer.", None), ("", None), (None, None),
 ])
 def test_extract_sql(text, expected):

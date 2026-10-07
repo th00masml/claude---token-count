@@ -209,8 +209,19 @@ def estimate_full_run(registry: Registry, budget: Budget, out: Path = RESULTS / 
 
 # --------------------------------------------------------------------------- stage 3 / 4
 
+def runnable(registry: Registry, budget: Budget, models: list[str], stage: str) -> list[str]:
+    """Drop Bedrock models without a price (the budget could not track them) with a log entry."""
+    out = []
+    for m in models:
+        if registry.spec(m)["backend"] == "bedrock" and budget.price(m) is None and not budget.allow_unpriced:
+            log_skip(m, "no price in config/prices.yaml (budget cannot track it)", stage)
+            continue
+        out.append(m)
+    return out
+
+
 def stage3(registry: Registry, budget: Budget, allow_unverified: bool = False) -> None:
-    for m in registry.available(("candidate", "reference")):
+    for m in runnable(registry, budget, registry.available(("candidate", "reference")), "stage3"):
         spec = registry.spec(m)
         strategies = spec.get("strategies") or STAGE3_STRATEGIES
         run_model(registry, budget, "stage3", m, strategies, DATASETS, allow_unverified=allow_unverified)
@@ -233,7 +244,7 @@ def top_models(n: int = 3, results_dir: Path = RESULTS) -> list[str]:
 
 def stage4(registry: Registry, budget: Budget, allow_unverified: bool = False) -> list[str]:
     top = top_models()
-    for m in top:
+    for m in runnable(registry, budget, top, "stage4"):
         run_model(registry, budget, "stage4", m, STAGE4_STRATEGIES, DATASETS, allow_unverified=allow_unverified)
     return top
 

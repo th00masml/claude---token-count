@@ -15,6 +15,7 @@ from t2sbench.executor import DEFAULT_MAX_ROWS, DEFAULT_TIMEOUT_S, execute
 from t2sbench.validator import has_top_level_order_by
 
 FLOAT_DIGITS = 4
+FULL_COMPARE_MAX_ROWS = 200_000  # only when both results exceed the 1000-row cap
 
 
 def _norm_value(v):
@@ -81,6 +82,18 @@ def execution_match(
         return ExOutcome(False, False, "no answer", "no_answer", gold.error, ordered, False,
                          gold.truncated, 0.0, gold.elapsed_s, 0)
     pred = execute(db_path, pred_sql, timeout_s=timeout_s, max_rows=max_rows)
+    # A capped result is not the full result: if only one side hit the cap they differ; if both
+    # did, compare the complete results (gold SQL is trusted, pred already ran once).
+    if gold.ok and pred.ok and (pred.truncated or gold.truncated):
+        if pred.truncated != gold.truncated:
+            correct = False
+        else:
+            g_full = execute(db_path, gold_sql, timeout_s=timeout_s, max_rows=FULL_COMPARE_MAX_ROWS)
+            p_full = execute(db_path, pred_sql, timeout_s=timeout_s, max_rows=FULL_COMPARE_MAX_ROWS)
+            correct = bool(g_full.ok and p_full.ok and not g_full.truncated and not p_full.truncated
+                           and results_match(p_full.rows, g_full.rows, ordered))
+        return ExOutcome(correct, pred.ok, pred.error, pred.error_kind, gold.error, ordered,
+                         pred.truncated, gold.truncated, pred.elapsed_s, gold.elapsed_s, len(pred.rows))
     correct = bool(gold.ok and pred.ok and results_match(pred.rows, gold.rows, ordered))
     return ExOutcome(correct, pred.ok, pred.error, pred.error_kind, gold.error, ordered,
                      pred.truncated, gold.truncated, pred.elapsed_s, gold.elapsed_s, len(pred.rows))
