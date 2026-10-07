@@ -1,0 +1,39 @@
+# OmniSQL official prompt (input_prompt_template from the seeklhy/OmniSQL-* model card).
+# verified: false -> reconstructed from memory because huggingface.co was unreachable when
+# this file was written. Before stage 2: run `t2sbench fetch-card omnisql-7b`, compare the
+# template below with the card word for word, fix it, set verified: true and fill
+# card_revision with the commit sha that fetch-card prints.
+name: omnisql
+verified: false
+source: https://huggingface.co/seeklhy/OmniSQL-7B
+card_revision: null
+system: null
+user: |
+  {examples}Task Overview:
+  You are a data science expert. Below, you are provided with a database schema and a natural language question. Your task is to understand the schema and generate a valid SQL query to answer the question.
+
+  Database Engine:
+  SQLite
+
+  Database Schema:
+  {schema}
+  This schema describes the database's structure, including tables, columns, primary keys, foreign keys, and any relevant relationships or constraints.
+
+  Question:
+  {evidence_block}{question}
+
+  Instructions:
+  - Make sure you only output the information that is asked in the question. If the question asks for a specific column, make sure to only include that column in the SELECT clause, nothing more.
+  - The generated query should return all of the information asked in the question without any missing or extra information.
+  - Before generating the final SQL query, please think through the steps of how to write the query.
+
+  Output Format:
+  In your answer, please enclose the generated SQL query in a code block:
+  ```sql
+  -- Your SQL query
+  ```
+
+  Take a deep breath and think step by step to find the correct SQL query.
+evidence_block: "{evidence}\n"
+examples_header: "Examples:\n\n"
+sampling: {temperature: 0.0, max_tokens: 4096}

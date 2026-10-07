@@ -1,0 +1,25 @@
+# S1: three fixed few-shot examples per dataset family.
+# BIRD: hand-written examples on small toy schemas that are not BIRD dev databases
+# (no leakage into the test sample). Synthetic: three pairs from the TRAIN pool (train
+# templates only), referenced by id; their schema is the target schema, so it is not repeated.
+bird:
+  - schema: |
+      CREATE TABLE school (school_id INTEGER PRIMARY KEY, name TEXT, city TEXT, type TEXT);
+      CREATE TABLE student (student_id INTEGER PRIMARY KEY, school_id INTEGER REFERENCES school(school_id), name TEXT, grade INTEGER, gpa REAL);
+    evidence: "public school refers to type = 'Public'"
+    question: How many students attend public schools in Springfield?
+    sql: SELECT COUNT(*) FROM student AS s JOIN school AS c ON c.school_id = s.school_id WHERE c.type = 'Public' AND c.city = 'Springfield'
+  - schema: |
+      CREATE TABLE movie (movie_id INTEGER PRIMARY KEY, title TEXT, release_year INTEGER, budget REAL, revenue REAL);
+      CREATE TABLE rating (movie_id INTEGER REFERENCES movie(movie_id), user_id INTEGER, stars INTEGER);
+    evidence: "highest average rating refers to MAX(AVG(stars))"
+    question: Which movie released in 2010 has the highest average rating? Give its title.
+    sql: SELECT m.title FROM movie AS m JOIN rating AS r ON r.movie_id = m.movie_id WHERE m.release_year = 2010 GROUP BY m.movie_id ORDER BY AVG(r.stars) DESC LIMIT 1
+  - schema: |
+      CREATE TABLE customer (customer_id INTEGER PRIMARY KEY, name TEXT, segment TEXT);
+      CREATE TABLE orders (order_id INTEGER PRIMARY KEY, customer_id INTEGER REFERENCES customer(customer_id), order_date TEXT, amount REAL);
+    evidence: "percentage = DIVIDE(SUM(amount WHERE segment = 'SME'), SUM(amount)) * 100; in 2023 refers to order_date LIKE '2023%'"
+    question: What percentage of the total order amount in 2023 came from SME customers?
+    sql: SELECT CAST(SUM(CASE WHEN c.segment = 'SME' THEN o.amount ELSE 0 END) AS REAL) * 100 / SUM(o.amount) FROM orders AS o JOIN customer AS c ON c.customer_id = o.customer_id WHERE o.order_date LIKE '2023%'
+synthetic:
+  ids: [syn-train-0042-pl, syn-train-0071-en, syn-train-0049-pl]

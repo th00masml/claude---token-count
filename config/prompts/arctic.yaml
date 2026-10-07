@@ -1,0 +1,39 @@
+# Arctic-Text2SQL-R1 (Snowflake) prompt. verified: false -> the card was unreachable when
+# this was written; Arctic-Text2SQL-R1 was trained on the OmniSQL prompt format, which is
+# used below as a placeholder. Verify against the card (`t2sbench fetch-card
+# arctic-text2sql-r1-7b`), including any system prompt and the <think>/<answer> output
+# format and sampling parameters, then set verified: true and card_revision.
+name: arctic
+verified: false
+source: https://huggingface.co/Snowflake/Arctic-Text2SQL-R1-7B
+card_revision: null
+system: null
+user: |
+  {examples}Task Overview:
+  You are a data science expert. Below, you are provided with a database schema and a natural language question. Your task is to understand the schema and generate a valid SQL query to answer the question.
+
+  Database Engine:
+  SQLite
+
+  Database Schema:
+  {schema}
+  This schema describes the database's structure, including tables, columns, primary keys, foreign keys, and any relevant relationships or constraints.
+
+  Question:
+  {evidence_block}{question}
+
+  Instructions:
+  - Make sure you only output the information that is asked in the question. If the question asks for a specific column, make sure to only include that column in the SELECT clause, nothing more.
+  - The generated query should return all of the information asked in the question without any missing or extra information.
+  - Before generating the final SQL query, please think through the steps of how to write the query.
+
+  Output Format:
+  In your answer, please enclose the generated SQL query in a code block:
+  ```sql
+  -- Your SQL query
+  ```
+
+  Take a deep breath and think step by step to find the correct SQL query.
+evidence_block: "{evidence}\n"
+examples_header: "Examples:\n\n"
+sampling: {temperature: 0.0, max_tokens: 4096}

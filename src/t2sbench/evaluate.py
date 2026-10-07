@@ -68,9 +68,15 @@ def execution_match(
     gold_sql: str,
     timeout_s: float = DEFAULT_TIMEOUT_S,
     max_rows: int = DEFAULT_MAX_ROWS,
+    gold_cache: dict | None = None,
 ) -> ExOutcome:
     ordered = has_top_level_order_by(gold_sql)
-    gold = execute(db_path, gold_sql, timeout_s=timeout_s, max_rows=max_rows)
+    key = (str(db_path), gold_sql)
+    gold = gold_cache.get(key) if gold_cache is not None else None
+    if gold is None:
+        gold = execute(db_path, gold_sql, timeout_s=timeout_s, max_rows=max_rows)
+        if gold_cache is not None:
+            gold_cache[key] = gold
     if pred_sql is None or not pred_sql.strip():
         return ExOutcome(False, False, "no answer", "no_answer", gold.error, ordered, False,
                          gold.truncated, 0.0, gold.elapsed_s, 0)

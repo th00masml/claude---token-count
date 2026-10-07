@@ -13,38 +13,88 @@ company data goes into this repo or onto the benchmark machine.
 
 ```bash
 uv sync                      # Python 3.11, core deps
-uv sync --extra train        # + QLoRA training deps (stage 6, needs the GPU box)
-uv run pytest -q
+uv sync --extra serve        # + vLLM (GPU machine)
+uv sync --extra train        # + QLoRA training deps (stage 6)
+uv run pytest -q             # offline: fake models, stub clients, synthetic DB
 ```
 
-## Commands
+Bedrock needs AWS credentials in the environment; the region is `bedrock.region` in
+`config/models.yaml`.
+
+## Running the benchmark
+
+Each stage stops when done so the results can be reviewed (notebooks 02-07 show them).
 
 ```bash
-uv run t2sbench build-synthetic          # DB + test/train/val questions into data/synthetic/
-uv run t2sbench fetch-bird dev           # public BIRD dev into data/bird/ (not committed)
-uv run t2sbench fetch-bird train         # BIRD train, only for LoRA L1 (stage 6)
+uv run t2sbench build-synthetic          # synthetic DB + questions (data/synthetic/)
+uv run t2sbench fetch-bird dev           # public BIRD dev (data/bird/, not committed)
 uv run t2sbench sample-bird              # stratified 150-question sample, seed 42
-uv run t2sbench discover-models          # which configured models really exist -> results/model_availability.json
-uv run t2sbench check-sql DB "SELECT ..."
+uv run t2sbench discover-models          # what really exists -> results/model_availability.json
+uv run t2sbench stage 2                  # smoke test: 20 questions, 2 Bedrock + 1 local, S0/S2, + estimate
+uv run t2sbench stage 3                  # all models x S0, S2 x 4 test sets; writes the top 3
+uv run t2sbench stage 4                  # top 3 x S1, S3, S4, S5
+uv run t2sbench fetch-card sqrl-9b       # then copy the SQRL prompt into config/prompts/sqrl.yaml
+uv run t2sbench stage 5                  # SQRL agentic vs single (harness check first)
+uv run t2sbench fetch-bird train
+uv run t2sbench stage 6-train            # QLoRA adapters L1, L2-{50,100,200,400}, L3
+uv run t2sbench stage 6-eval             # S2 with each adapter via vLLM --enable-lora
+uv run t2sbench report                   # report/REPORT.md + PNG charts
 ```
+
+The four test sets are `bird_ev` (BIRD sample with evidence), `bird_noev` (same questions
+without it), `syn_pl` and `syn_en`. One configuration can be run by hand:
+
+```bash
+uv run t2sbench run --stage stage3 --model nova-lite --strategy S2 --dataset syn_pl
+scripts/serve.sh qwen2.5-coder-7b -- uv run t2sbench run --stage stage3 --model qwen2.5-coder-7b \
+    --strategy S0 --strategy S2 --dataset syn_pl --dataset syn_en
+```
+
+Results: `results/<stage>/<model>[@adapter]__<strategy>__<dataset>.parquet`, one row per
+question (prompt, responses, SQL, error, model and DB time, tokens, cost). Every model call
+is cached in `cache/calls/` by hash of (model, adapter, prompt, parameters), so re-running
+a command resumes where it stopped.
+
+Safety rails:
+- **Budget:** Bedrock spend is tracked in `results/bedrock_spend.json`. A call that could
+  push it past `budget_usd` (50) stops the run before it is made, and models without a
+  price are refused.
+- **Concurrency:** vLLM runs 4 requests at a time and drops to 2 when the server log shows
+  preemption or KV-cache pressure (logged in `logs/concurrency.log`).
+- **Skipped models:** a model that is missing or whose server can't start is skipped and
+  logged in `logs/skipped.jsonl`.
+
+## Before the first real run
+
+- Fill or verify every price in `config/prices.yaml` (several are `null` or from memory).
+- The official prompts for OmniSQL and Arctic (`config/prompts/omnisql.yaml`,
+  `arctic.yaml`) were written without access to Hugging Face and are marked
+  `verified: false`. Runs refuse them until they are checked against the card (use
+  `fetch-card`), or until `--allow-unverified-prompts` is passed.
+- `config/prompts/sqrl.yaml` holds placeholders. Stage 5 refuses to start until the SQRL
+  card's system prompt, user template and observation format are copied in verbatim,
+  along with `card_revision`.
 
 ## Layout
 
 ```
-config/models.yaml        candidate models, Bedrock region, vLLM settings (precision, max-model-len)
-config/prices.yaml        token prices (null = unknown, never guessed) and the 50 USD budget
+config/models.yaml        candidate models, Bedrock region, vLLM precision / max-model-len per model
+config/prices.yaml        token prices and the 50 USD budget
+config/prompts/           default prompt, official card prompts, SQRL protocol
+config/fewshot.yaml       the 3 fixed S1 examples per dataset family
+scripts/serve.sh          start vLLM for one model, wait for /health, run a command, stop, free the GPU
 src/t2sbench/
-  datasets/bird.py        download, stratified sample, train/dev disjointness check
-  datasets/synthetic/     generator.py, templates.py, build.py, schema_doc.yaml, codes.yaml
-  models/                 base.py (generate / generate_with_tools), cache.py, discovery.py
-  strategies/base.py      Strategy interface (S0-S5 come in stages 2 and 4)
-  validator.py            sqlglot: one statement, SELECT/WITH only, no DDL/DML/PRAGMA/ATTACH
-  executor.py             SQLite mode=ro + PRAGMA query_only=ON, 10 s timeout, 1000-row cap
-  evaluate.py             execution accuracy, bootstrap CI, McNemar
-  run.py                  typer CLI
-data/synthetic/*.jsonl    committed question sets (the .sqlite is rebuilt deterministically)
-notebooks/                one notebook per stage with the results shown to the reviewer
-tests/                    pytest
+  datasets/               BIRD download + sample, synthetic DB generator and question templates
+  models/                 interface (chat, generate, generate_with_tools), Bedrock Converse,
+                          OpenAI-compatible vLLM client, disk cache, budget, discovery, registry
+  strategies/             S0, S1, S2 (basic.py), S3 (explore.py), S4 (repair.py), S5 (consistency.py)
+  sqrl.py                 SQRL native protocol agent (stage 5)
+  schema.py               DDL and value lists for prompts
+  validator.py, executor.py, evaluate.py
+  bench.py                runner (one configuration -> parquet), stages.py (stage orchestration)
+  train_lora.py, report.py, run.py (typer CLI)
+notebooks/                01 data, 02-07 one per stage
+tests/                    pytest, all offline
 ```
 
 ## Synthetic database
@@ -71,5 +121,6 @@ SQRL, goes through the validator and the read-only executor.
 
 ## Status
 
-Stage 1 done (this branch). Stage 2 (smoke test) needs a machine with valid AWS
-credentials, Hugging Face access and the RTX 4090.
+All code for stages 1-7 is written and tested offline. Nothing has run against real
+models yet: that needs valid AWS credentials, network access to BIRD and Hugging Face,
+and the RTX 4090.

@@ -1,0 +1,17 @@
+# Benchmark's own prompt, used for every model without an official prompt on its card.
+name: default
+verified: true
+source: t2sbench
+system: |
+  You are an expert in SQL and SQLite. Given a database schema and a question, write one
+  SQLite query that answers the question. Use only tables and columns that exist in the
+  schema. Return exactly the columns the question asks for. Reply with the query in a
+  ```sql code block.
+user: |
+  {examples}Database schema:
+  {schema}
+
+  {evidence_block}Question: {question}
+evidence_block: "Hint: {evidence}\n"
+examples_header: "Examples:\n\n"
+sampling: {temperature: 0.0, max_tokens: 2048}

@@ -1,0 +1,26 @@
+# SQRL native protocol (feyninc/sqrl-4b, feyninc/sqrl-9b). Everything marked
+# __COPY_FROM_MODEL_CARD__ must be copied VERBATIM from the Hugging Face model card; the
+# SQRL runner refuses to start while any placeholder is left. Record the card commit in
+# card_revision (`t2sbench fetch-card sqrl-9b` prints it).
+#
+# Placeholders available to the templates:
+#   user:        {schema} {question} {evidence}   (use exactly the fields the card uses)
+#   observation: {result}                          (formatted rows, trimmed to 20)
+name: sqrl
+source: https://huggingface.co/feyninc/sqrl-9b
+card_revision: null
+system: __COPY_FROM_MODEL_CARD__
+user: __COPY_FROM_MODEL_CARD__
+observation: __COPY_FROM_MODEL_CARD__
+# how the card wants evidence passed when present (e.g. appended to the question); null = card has no evidence slot
+evidence_format: null
+# optional text the card prescribes for answering without exploration (SQRL-single); null = same prompt,
+# and a <sql> action in the first turn counts as no answer
+single_mode_instruction: null
+# assistant turns kept in history: "full" or "strip_think" (keep only text after </think>)
+history: strip_think
+result_format: markdown   # how rows are rendered into {result}: markdown | csv | json
+sampling: {temperature: 0.7, top_p: 0.95, max_tokens: 8192}
+max_model_len: 16384
+max_explorations: 5
+max_rows: 20

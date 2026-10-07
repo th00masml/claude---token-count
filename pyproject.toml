@@ -29,6 +29,10 @@ train = [
     "accelerate>=1.0",
 ]
 
+serve = [
+    "vllm>=0.10",
+]
+
 [project.scripts]
 t2sbench = "t2sbench.run:app"
 

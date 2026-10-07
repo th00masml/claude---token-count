@@ -3,6 +3,8 @@
 # results/model_availability.json. Unavailable models are skipped with a log entry.
 #
 # role: candidate (S0-S5) | reference (large Bedrock model, S2 only) | sqrl (stage 5 only)
+# tools: native (default, function calling) | text (S3 uses an <explore> text protocol instead)
+# prompt_template: config/prompts/<name>.yaml (official card prompt); default otherwise
 
 bedrock:
   region: us-east-1        # widest choice of small models; change here if needed
@@ -36,7 +38,8 @@ models:
     dtype: bfloat16
     kv_cache_dtype: fp8
     gpu_memory_utilization: 0.92
-    max_model_len: 8192
+    max_model_len: 16384
+    tool_call_parser: hermes   # native tool calls for S3 (Qwen2.5 family)
     role: candidate
   - name: qwen2.5-coder-14b
     backend: vllm
@@ -44,7 +47,8 @@ models:
     checkpoint: Qwen/Qwen2.5-Coder-14B-Instruct-AWQ   # official AWQ 4-bit
     quantization: awq
     size_b: 14
-    max_model_len: 8192
+    max_model_len: 16384
+    tool_call_parser: hermes   # native tool calls for S3 (Qwen2.5 family)
     gpu_memory_utilization: 0.92
     role: candidate
   - name: omnisql-7b
@@ -54,7 +58,8 @@ models:
     dtype: bfloat16
     kv_cache_dtype: fp8
     gpu_memory_utilization: 0.92
-    max_model_len: 8192
+    max_model_len: 16384
+    tool_call_parser: hermes   # native tool calls for S3 (Qwen2.5 family)
     prompt_template: omnisql   # official prompt from the model card, copied verbatim in stage 2
     role: candidate
   - name: omnisql-14b
@@ -63,7 +68,8 @@ models:
     checkpoint: null          # no ready AWQ found yet -> online FP8 (see quantization)
     quantization: fp8
     size_b: 14
-    max_model_len: 8192
+    max_model_len: 16384
+    tool_call_parser: hermes   # native tool calls for S3 (Qwen2.5 family)
     gpu_memory_utilization: 0.92
     prompt_template: omnisql
     role: candidate
@@ -74,7 +80,8 @@ models:
     dtype: bfloat16
     kv_cache_dtype: fp8
     gpu_memory_utilization: 0.92
-    max_model_len: 8192
+    max_model_len: 16384
+    tool_call_parser: hermes   # native tool calls for S3 (Qwen2.5 family)
     prompt_template: arctic
     role: candidate
   - name: arctic-text2sql-r1-14b
@@ -83,10 +90,14 @@ models:
     checkpoint: null
     quantization: fp8
     size_b: 14
-    max_model_len: 8192
+    max_model_len: 16384
+    tool_call_parser: hermes   # native tool calls for S3 (Qwen2.5 family)
     gpu_memory_utilization: 0.92
     prompt_template: arctic
     role: candidate
+
+  # 22-24B open models: none configured; Mistral Small 24B is covered via Bedrock. Adding one
+  # requires a ready AWQ/GPTQ 4-bit checkpoint (set checkpoint + quantization), else it is skipped.
 
   # ---------------- SQRL: stage 5 only, native protocol, bf16, never quantized -------------
   - {name: sqrl-4b, backend: vllm, hf_repo: feyninc/sqrl-4b, size_b: 4, dtype: bfloat16, max_model_len: 16384, role: sqrl}
