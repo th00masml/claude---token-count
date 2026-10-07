@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import shlex
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
@@ -75,7 +77,7 @@ def run_model(registry: Registry, budget: Budget, stage: str, model: str, strate
     cmd = ["scripts/serve.sh", model]
     for name, path in (loras or {}).items():
         cmd += ["--lora", f"{name}={path}"]
-    cmd += ["--", "uv", "run", "t2sbench", "run", "--stage", stage, "--model", model]
+    cmd += ["--", *shlex.split(os.environ.get("T2SBENCH_CMD", "uv run t2sbench")), "run", "--stage", stage, "--model", model]
     for st in strategies:
         cmd += ["--strategy", st]
     for ds in datasets:

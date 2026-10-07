@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from pathlib import Path
 
 from t2sbench.models.budget import Budget
@@ -62,6 +63,7 @@ class Registry:
         else:
             from t2sbench.models.openai_compat import OpenAICompatModel
 
-            inner = OpenAICompatModel(name, self.cfg["vllm"]["base_url"], served_name=name, adapter=adapter,
+            base_url = os.environ.get("T2S_VLLM_BASE_URL") or self.cfg["vllm"]["base_url"]  # set by serve.sh
+            inner = OpenAICompatModel(name, base_url, served_name=name, adapter=adapter,
                                       client=client, native_tools=m.get("tools", "native") == "native")
         return CachedModel(inner, self.cache, self.budget, identity=self.identity(name))
